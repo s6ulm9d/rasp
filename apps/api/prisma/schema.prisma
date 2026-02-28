@@ -1,0 +1,83 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  users     User[]
+  agents    Agent[]
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model Agent {
+  id             String         @id @default(uuid())
+  name           String
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  apiKeys        AgentApiKey[]
+  events         AttackEvent[]
+}
+
+model AgentApiKey {
+  id        String   @id @default(uuid())
+  keyHash   String   @unique
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model AttackEvent {
+  id               String   @id
+  agentId          String
+  agent            Agent    @relation(fields: [agentId], references: [id])
+  timestamp        DateTime
+  attackType       String
+  attackSubtype    String
+  confidenceScore  Float
+  severity         String
+  serviceName      String
+  environment      String
+  sourceIp         String
+  wasBlocked       Boolean
+}
+
+model DetectionRule {
+  id       String  @id @default(uuid())
+  name     String
+  enabled  Boolean @default(true)
+  pattern  String
+}
+
+model FalsePositive {
+  id      String   @id @default(uuid())
+  ruleId  String
+  hash    String   @unique
+}
+
+model AlertConfig {
+  id       String   @id @default(uuid())
+  email    String
+  slackUrl String?
+}
+
+model ComplianceReport {
+  id        String   @id @default(uuid())
+  type      String
+  createdAt DateTime @default(now())
+  reportUrl String
+}

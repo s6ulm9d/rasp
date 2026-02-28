@@ -1,0 +1,18 @@
+api:
+  replicaCount: 2
+  image: shieldrasp-api:latest
+dashboard:
+  replicaCount: 1
+  image: shieldrasp-dashboard:latest
+ingestor:
+  replicaCount: 3
+  image: shieldrasp-ingestor:latest
+ml:
+  replicaCount: 1
+  image: shieldrasp-ml:latest
+postgresql:
+  enabled: true
+redis:
+  enabled: true
+kafka:
+  enabled: true

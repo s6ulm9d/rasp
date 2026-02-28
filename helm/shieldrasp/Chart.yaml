@@ -1,0 +1,5 @@
+apiVersion: v2
+name: shieldrasp
+description: ShieldRASP Monorepo Deployment
+version: 1.0.0
+appVersion: "1.0.0"
