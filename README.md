@@ -1,65 +1,53 @@
-# ShieldRASP Monorepo
-A Runtime Application Self-Protection tool that runs inside Node.js, Python, and Java applications. 
-It detects and blocks injection attacks, command execution, path traversal, SSRF, deserialization attacks, prototype pollution, and behavioral anomalies in real-time.
+# ShieldRASP Monorepo (CLI Edition)
+A Runtime Application Self-Protection tool that runs inside Node.js, Python, and Java applications.
+This version has been converted from a web-application into a dedicated **CLI Tool** for terminal-based security management.
 
 ## Features
-* **Fail-open architecture:** Agents will never crash the host application.
+* **Zero-config Monitoring:** Run `shieldrasp monitor` to start a local listener.
+* **Terminal Dashboard:** Real-time attack visualization directly in your terminal.
 * **Taint Engine Tracking:** Memory-based lightweight variable taint tracking across languages.
-* **Real-time API & Dashboard:** View unified threats via the gRPC Ingestor + WebSocket streaming API.
-* **ML Inference Anomaly Tracking:** Isolation Forest based behavioral attack detection on request patterns. 
+* **Rule Management:** Toggle security rules via CLI commands.
 
 ## Requirements
-* Docker & Docker Compose
 * Node.js v20+
 * Python 3.11+
-* Go 1.22+
 * Java 11+
 
-## Quick Start (under 5 minutes)
+## Quick Start
 
-1. **Setup Environment**:
+1. **Install Dependencies**:
    ```bash
-   chmod +x scripts/setup.sh
-   ./scripts/setup.sh
-   ```
-
-2. **Generate Local TLS Certs**:
-   ```bash
-   chmod +x scripts/generate-certs.sh
-   ./scripts/generate-certs.sh
+   npm install
    ```
 
-3. **Spin up Core Infrastructure** (Postgres, Redis, Kafka):
+2. **Build the CLI**:
    ```bash
-   docker compose up -d postgres redis zookeeper kafka
+   npm run build --workspace=@shieldrasp/cli
    ```
 
-4. **Seed the Database** (Default dummy agents & rules):
+3. **Start the Monitor**:
    ```bash
-   chmod +x scripts/seed.sh
-   ./scripts/seed.sh
+   # In one terminal
+   npx shieldrasp monitor
    ```
 
-5. **Run all Apps** (API, Dashboard, ML, Ingestor, Demo App):
-   If building locally via turborepo:
+4. **Run the Demo App**:
    ```bash
-   npm run dev
+   # In another terminal
+   cd apps/demo-app
+   npm start
    ```
-   Or to run everything via containers:
-   ```bash
-   docker compose up -d
-   ```
+
+## CLI Commands
+* `shieldrasp monitor` - Starts the telemetry collector.
+* `shieldrasp rules` - Lists and manages protection rules.
+* `shieldrasp agents` - Shows status of connected RASP agents.
 
 ## Folder Structure
-* `apps/`
-  * `api` - NestJS Control Plane and Websockets
-  * `dashboard` - Next.js 14 React UI
-  * `ingestor` - Go High-throughput gRPC service
-  * `ml-inference` - Python Anomaly Detection Scorer
-  * `demo-app` - Vulnerable Express server to test agents
 * `packages/`
-  * `agent-node` - Typescript Node.js RASP
-  * `agent-python` - Python 3 RASP
-  * `agent-java` - Java JVM Class Transformer RASP
-  * `proto` - gRPC Definitions
-  * `detection-rules` - AST and Regex vulnerability logic
+  * `cli` - The main ShieldRASP control interface.
+  * `agent-node` - Typescript Node.js RASP.
+  * `agent-python` - Python 3 RASP.
+  * `agent-java` - Java JVM Class Transformer RASP.
+  * `proto` - gRPC Definitions.
+  * `detection-rules` - AST and Regex vulnerability logic.
