@@ -8,22 +8,19 @@ export class RuleEngine {
         this.rules.push(...newRules);
         for (const rule of newRules) {
             if (rule.pattern) {
-                this.compiledPatterns.set(rule.id, new RegExp(rule.pattern));
+                this.compiledPatterns.set(rule.id, new RegExp(rule.pattern, 'i'));
             }
         }
     }
 
-    evaluate(input: string, context: string, isTainted: boolean) {
-        const matches: Rule[] = [];
-        for (const rule of this.rules) {
-            if (rule.context !== context) continue;
-            if (rule.taint_required && !isTainted) continue;
-
-            const regex = this.compiledPatterns.get(rule.id);
-            if (regex && regex.test(input)) {
-                matches.push(rule);
+    evaluate(type: string, payload: string): Rule | null {
+        const relevantRules = this.rules.filter(r => r.type === type && r.enabled);
+        for (const rule of relevantRules) {
+            const pattern = this.compiledPatterns.get(rule.id);
+            if (pattern && pattern.test(payload)) {
+                return rule;
             }
         }
-        return matches;
+        return null;
     }
 }

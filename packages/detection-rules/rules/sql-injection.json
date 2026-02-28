@@ -1,0 +1,11 @@
+[
+    {
+        "id": "sqli-001",
+        "name": "SQL Union Injection",
+        "type": "sqli",
+        "pattern": "union.*select",
+        "action": "block",
+        "severity": "critical",
+        "enabled": true
+    }
+]
