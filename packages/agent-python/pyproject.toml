@@ -13,7 +13,9 @@ dependencies = [
     "sqlglot>=19.0.0",
     "grpcio>=1.59.0",
     "protobuf>=4.24.4",
-    "zstandard>=0.21.0"
+    "zstandard>=0.21.0",
+    "python-socketio[client]>=5.11.0",
+    "websocket-client>=1.7.0"
 ]
 
 [project.entry-points."python.sitecustomize"]

@@ -13,3 +13,14 @@ export function validateConfig(config: AgentConfig) {
   config.endpoint = config.endpoint || 'localhost:50051';
   config.timeout = config.timeout || 5000;
 }
+
+export function loadConfig(partial: Partial<AgentConfig>): AgentConfig {
+  const config = {
+    apiKey: partial.apiKey || process.env.RASP_KEY || '',
+    mode: partial.mode || (process.env.RASP_MODE as any) || 'protect',
+    endpoint: partial.endpoint || process.env.RASP_URL || 'localhost:50052',
+    timeout: partial.timeout || 5000
+  };
+  validateConfig(config);
+  return config;
+}

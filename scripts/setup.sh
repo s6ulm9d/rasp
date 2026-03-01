@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Setting up ShieldRASP Local Dev Environment..."
+echo "🛡️ Setting up ShieldRASP Monorepo (CLI Edition)..."
 
-# Install root dependencies and turbo
+# Install root dependencies
 npm install
 
-# Setup API
-cd apps/api
+# Build the CLI
+echo "🛠️ Building ShieldRASP CLI..."
+npm run build --workspace=@shieldrasp/cli
+
+# Build the Node Agent
+echo "🛠️ Building ShieldRASP Node Agent..."
+npm run build --workspace=@shieldrasp/node-agent
+
+# Setup Demo App
+echo "📦 Setting up Demo App..."
+cd apps/demo-app
 npm install
-npx prisma generate
 cd ../..
 
-# Setup Dashboard
-cd apps/dashboard
-npm install
-cd ../..
-
-echo "Setup complete! Run 'docker compose up' to start the infrastructure, then 'npm run dev' to start the apps."
+echo "✅ Setup complete! You can now start the monitor and follow the README instructions."
