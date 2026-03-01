@@ -7,7 +7,10 @@ export interface TaintLabel {
 }
 
 export class TaintContext {
-  taintedObjects = new WeakMap<object, TaintLabel>();
+  // Use a regular Map to allow primitives (strings) to be tainted.
+  // Since TaintContext is scoped to a request in AsyncLocalStorage,
+  // it will be garbage collected after the request is finished.
+  taintedObjects = new Map<any, TaintLabel>();
   requestMeta = {
     userId: '', sessionId: '', sourceIp: '', requestId: '', httpMethod: '', httpPath: ''
   };
@@ -21,6 +24,6 @@ export function getTaintContext(): TaintContext | undefined {
 
 export function isTainted(obj: any): boolean {
   const ctx = getTaintContext();
-  if (!ctx || !obj || typeof obj !== 'object') return false;
+  if (!ctx || obj === undefined || obj === null) return false;
   return ctx.taintedObjects.has(obj);
 }

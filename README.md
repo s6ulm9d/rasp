@@ -27,8 +27,8 @@ This version has been converted from a web-application into a dedicated **CLI To
 
 3. **Start the Monitor**:
    ```bash
-   # In one terminal
-   npx shieldrasp monitor
+   # From the project root
+   npm run cli -- monitor
    ```
 
 4. **Run the Demo App**:

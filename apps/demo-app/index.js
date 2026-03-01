@@ -1,7 +1,7 @@
 require('@shieldrasp/node-agent').init({
     apiKey: process.env.RASP_KEY || 'demo_agent_key_12345',
     mode: process.env.RASP_MODE || 'protect',
-    endpoint: process.env.RASP_URL || 'localhost:50051'
+    endpoint: process.env.RASP_URL || 'localhost:50052'
 });
 
 const express = require('express');
@@ -44,4 +44,4 @@ app.post('/vuln/cmd', (req, res) => {
     }
 });
 
-app.listen(8080, () => console.log('Demo app listening on port 8080. Test: curl "http://localhost:8080/vuln/sqli?id=1 UNION SELECT * FROM secrets"'));
+app.listen(8081, () => console.log('Demo app listening on port 8081. Test: curl "http://localhost:8081/vuln/sqli?id=1 UNION SELECT * FROM secrets"'));

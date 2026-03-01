@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
-    "cli": "npm run build --workspace=@shieldrasp/cli && node packages/cli/dist/index.js",
+    "cli": "node packages/cli/dist/index.js",
     "lint": "turbo run lint",
     "test": "turbo run test"
   },

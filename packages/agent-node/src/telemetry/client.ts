@@ -22,6 +22,13 @@ export class TelemetryClient {
   }
 
   sendEvent(event: any) {
+    const { getTaintContext } = require('../taint/context');
+    const ctx = getTaintContext();
+    if (ctx && ctx.requestMeta) {
+      event.http_path = ctx.requestMeta.httpPath;
+      event.source_ip = ctx.requestMeta.sourceIp;
+      event.method = ctx.requestMeta.httpMethod;
+    }
     event.api_key = this.config.apiKey;
     event.event_id = crypto.randomUUID();
     event.timestamp = new Date().toISOString();
