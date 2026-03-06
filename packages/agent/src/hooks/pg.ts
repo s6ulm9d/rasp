@@ -7,6 +7,8 @@ import { TelemetryClient } from '../telemetry/client';
 import { RASPBlockError } from '../errors';
 
 export function hookPg(config: AgentConfig, telemetry: TelemetryClient) {
+    if (!config.protections.sqli) return;
+
     Hook(['pg'], (exports: any) => {
         if (!exports.Client || !exports.Client.prototype) return exports;
 
@@ -24,7 +26,7 @@ export function hookPg(config: AgentConfig, telemetry: TelemetryClient) {
                         const result = detectSqlInjection(sql, ctx);
                         if (result.matched) {
                             telemetry.sendEvent(result);
-                            if (result.blocked && config.mode === 'protect') {
+                            if (result.blocked && config.mode === 'block') {
                                 throw new RASPBlockError(result);
                             }
                         }

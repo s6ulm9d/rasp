@@ -7,7 +7,7 @@
         "start": "node index.js"
     },
     "dependencies": {
-        "@shieldrasp/node-agent": "1.0.0",
+        "@shieldrasp/agent": "1.0.0",
         "express": "^4.18.2",
         "pg": "^8.11.3"
     }

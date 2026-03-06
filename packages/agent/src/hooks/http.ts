@@ -7,6 +7,8 @@ import { TelemetryClient } from '../telemetry/client';
 import { RASPBlockError } from '../errors';
 
 export function hookHttp(config: AgentConfig, telemetry: TelemetryClient) {
+  if (!config.protections.ssrf) return;
+
   Hook(['http', 'https'], (exports: any, name: string) => {
     const originalRequest = exports.request;
 
@@ -23,7 +25,7 @@ export function hookHttp(config: AgentConfig, telemetry: TelemetryClient) {
             const result = detectSSRF(urlArg, ctx);
             if (result.matched) {
               telemetry.sendEvent(result);
-              if (result.blocked && config.mode === 'protect') {
+              if (result.blocked && config.mode === 'block') {
                 throw new RASPBlockError(result);
               }
             }

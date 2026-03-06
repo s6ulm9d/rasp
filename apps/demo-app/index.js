@@ -1,9 +1,8 @@
-require('@shieldrasp/node-agent').init({
-    apiKey: process.env.RASP_KEY || 'demo_agent_key_12345',
-    mode: process.env.RASP_MODE || 'protect',
-    endpoint: process.env.RASP_URL || 'localhost:50052'
-});
-
+if (process.env.NODE_ENV !== 'production') {
+    require('@shieldrasp/agent').start({
+        mode: 'block'
+    });
+}
 const express = require('express');
 const { exec } = require('child_process');
 const { Client } = require('pg');
@@ -30,10 +29,10 @@ app.get('/vuln/sqli', async (req, res) => {
     }
 });
 
-app.post('/vuln/cmd', (req, res) => {
-    const host = req.body.host;
+app.get('/vuln/cmd', (req, res) => {
+    const host = req.query.host;
     try {
-        exec(`ping -c 1 ${host}`, (err, stdout, stderr) => {
+        exec(`ping -n 1 ${host}`, (err, stdout, stderr) => {
             res.send(`<pre>${stdout}</pre>`);
         });
     } catch (error) {

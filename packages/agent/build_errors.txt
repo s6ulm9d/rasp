@@ -1,0 +1,1 @@
+﻿tsconfig.json(9,5): error TS5025: Unknown compiler option 'allowJson'. Did you mean 'allowJs'?

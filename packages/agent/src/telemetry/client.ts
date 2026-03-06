@@ -1,14 +1,16 @@
 import crypto from 'crypto';
 import { AgentConfig } from '../config';
 import { EventBuffer } from './buffer';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 export class TelemetryClient {
   private buffer: EventBuffer;
-  private socket: Socket;
+  private socket: ReturnType<typeof io>;
+
 
   constructor(private config: AgentConfig) {
-    this.buffer = new EventBuffer((events) => this.dispatchBatch(events));
+    this.buffer = new EventBuffer((events: any[]) => this.dispatchBatch(events));
+
     const url = `http://${this.config.endpoint || 'localhost:50052'}`;
     this.socket = io(url, { reconnection: true });
 
@@ -16,10 +18,11 @@ export class TelemetryClient {
       console.log(`[ShieldRASP] Telemetry connected to ${url}`);
     });
 
-    this.socket.on('connect_error', (error) => {
+    this.socket.on('connect_error', (error: any) => {
       // Fail silent but log in debug
     });
   }
+
 
   sendEvent(event: any) {
     const { getTaintContext } = require('../taint/context');
@@ -32,8 +35,21 @@ export class TelemetryClient {
     event.api_key = this.config.apiKey;
     event.event_id = crypto.randomUUID();
     event.timestamp = new Date().toISOString();
+    event.mode = this.config.mode;
+
+    // Log to console in alert/block modes
+    if (this.config.mode === 'alert' || this.config.mode === 'block') {
+      const color = this.config.mode === 'block' ? '\x1b[31m' : '\x1b[33m'; // Red or Yellow
+      const reset = '\x1b[0m';
+      console.error(`${color}[ShieldRASP ALERT] ${event.attack_type}${reset} detected on ${event.http_path || 'unknown path'}`);
+      if (this.config.mode === 'block') {
+        console.error(`[ShieldRASP] Action: BLOCKED`);
+      }
+    }
+
     this.buffer.add(event);
   }
+
 
   private dispatchBatch(events: any[]) {
     if (this.socket.connected) {

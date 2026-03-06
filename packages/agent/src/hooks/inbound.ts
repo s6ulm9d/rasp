@@ -34,6 +34,24 @@ export function hookInbound(config: AgentConfig, telemetry: TelemetryClient) {
                             httpMethod: req.method || '',
                             httpPath: url.pathname
                         };
+
+                        // Early Ingress WAF detection
+                        const { detectIngress } = require('../detection/ingress');
+                        const ingressResult = detectIngress(decodeURIComponent(url.pathname), url.searchParams);
+
+                        if (ingressResult.matched) {
+                            telemetry.sendEvent(ingressResult);
+
+                            if (ingressResult.blocked && config.mode === 'block') {
+                                res.writeHead(403, { 'Content-Type': 'application/json' });
+                                res.end(JSON.stringify({
+                                    error: 'Blocked by ShieldRASP',
+                                    details: `ShieldRASP Blocked: ${ingressResult.attack_type || 'Malicious Payload'}`
+                                }));
+                                return;
+                            }
+                        }
+
                     } catch (e) {
                         // ignore malformed URLs
                     }
