@@ -51,6 +51,15 @@ export class DetectionEngine {
             score += 30; // Heavy penalty for proven tainted data arriving at sinks
         }
 
+        // 2b. Entropy / Complexity Detection (Catching Heavily Obfuscated Malware Streams)
+        if (threat.payload.length > 20) {
+            const entropy = this.calculateEntropy(threat.payload);
+            if (entropy > 0.8) {
+                // Highly complex payload (Base64'd / Packed). Severe anomaly.
+                score += 20;
+            }
+        }
+
         if (this.config.sensitivity === 'high') score += 10;
         if (this.config.sensitivity === 'low') score -= 10;
 
@@ -147,5 +156,23 @@ export class DetectionEngine {
                 score: ctx.totalScore
             });
         }
+    }
+
+    private calculateEntropy(str: string): number {
+        const len = str.length;
+        if (len === 0) return 0;
+        const frequencies = new Map<string, number>();
+        for (let i = 0; i < len; i++) {
+            const char = str[i];
+            frequencies.set(char, (frequencies.get(char) || 0) + 1);
+        }
+        let entropy = 0;
+        for (const count of frequencies.values()) {
+            const p = count / len;
+            entropy -= p * Math.log2(p);
+        }
+        // Normalize against max possible entropy for this length (Math.log2(len)) to get a 0.0 - 1.0 ratio
+        const maxEntropy = Math.log2(Math.min(len, 256)); // Base on byte range since we mostly handle ascii/hex
+        return maxEntropy > 0 ? entropy / maxEntropy : 0;
     }
 }

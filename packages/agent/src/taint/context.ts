@@ -28,6 +28,18 @@ export function canonicalize(input: string): string {
     try { str = decodeURIComponent(str); } catch (e) { }
   }
 
+  // Deobfuscate Hex Encoded Payloads (\x27 \x3d)
+  str = str.replace(/\\x([0-9a-fA-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+
+  // Opportunistic Base64 Decoding (Extract commonly padded injections)
+  if (/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(str) && str.length > 8) {
+    try { 
+        const b64 = Buffer.from(str, 'base64').toString('utf-8'); 
+        // Only append if it looks like human-readable text or SQL to prevent binary corruption matching
+        if (/^[ -~]+$/.test(b64)) str += ` | decode_b64(${b64})`;
+    } catch (e) { }
+  }
+
   // Normalize Unicode representations, strip Null Bytes, enforce Lowercase for pattern matching
   return str.normalize('NFKD')
     .replace(/\0/g, '')

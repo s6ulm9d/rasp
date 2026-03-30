@@ -4,7 +4,7 @@ import { DetectionEngine } from '../engine';
 
 export function setupPathHooks(engine: DetectionEngine) {
     Hook(['fs'], (exports: any) => {
-        const methods = ['readFile', 'readFileSync', 'writeFile', 'writeFileSync', 'open', 'openSync', 'createReadStream', 'createWriteStream'];
+        const methods = ['readFile', 'readFileSync', 'writeFile', 'writeFileSync', 'unlink', 'unlinkSync', 'open', 'openSync', 'createReadStream', 'createWriteStream'];
 
         methods.forEach(method => {
             const original = exports[method];
@@ -20,7 +20,11 @@ export function setupPathHooks(engine: DetectionEngine) {
                         const taintCheck = ctx.isTainted(filePath);
                         // Jail Directory Enforcement: Block path traversal
                         const isTraversal = filePath.includes('..');
-                        // Also check if it's trying to access sensitive areas
+                        // Extremely Sensitive System File Gate (Drop instantly)
+                        if (filePath.includes('/etc/passwd') || filePath.includes('/etc/shadow')) {
+                            engine.evaluate(ctx, { attack: 'Path Traversal (Sensitive)', payload: `Attempted access to protected root file: ${filePath}`, sink: `fs.${method}`, baseScore: 99, tainted: taintCheck.tainted });
+                        }
+
                         const isSensitive = /^\/(etc|proc|root|var|boot|dev)/.test(filePath) || /^[A-Z]:\\(Windows|System32)/i.test(filePath);
 
                         if (isTraversal || isSensitive || taintCheck.tainted) {

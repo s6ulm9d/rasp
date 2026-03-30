@@ -45,49 +45,67 @@ export function setupSsrfHooks(engine: DetectionEngine) {
         return exports;
     });
 
-    // 2. HTTP/HTTPS layer hook for initial string analysis (immediate drops for basic payloads)
+    // 2. HTTP/HTTPS layer hook for initial string analysis (PRE-NETWORK VALIDATION)
     Hook(['http', 'https'], (exports: any, name: string) => {
         const originalRequest = exports.request;
-        if (!originalRequest || originalRequest.__shield_rasp_hooked) return exports;
+        const originalGet = exports.get;
+        if (originalRequest && originalRequest.__shield_rasp_hooked) return exports;
 
-        exports.request = function (this: any, ...args: any[]) {
+        function validateURL(args: any[], methodType: string, engine: DetectionEngine, ctx: any) {
             const urlArg = args[0];
-            const ctx = getTaintContext();
-
             let urlStr = '';
+
             if (typeof urlArg === 'string') {
                 urlStr = urlArg;
             } else if (urlArg && typeof urlArg === 'object') {
                 urlStr = urlArg.href || `${urlArg.protocol || 'http:'}//${urlArg.host || urlArg.hostname}${urlArg.path || '/'}`;
             }
 
-            if (urlStr && ctx) {
-                const taintCheck = ctx.isTainted(urlStr);
+            if (!urlStr || !ctx) return;
 
-                // Static IP/Host check pre-DNS
-                const isInternal = /^(https?:\/\/)?(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)/.test(urlStr) ||
-                    /localhost|metadata\.google\.internal|instance-data|0x7f/.test(urlStr);
-
-                if (isInternal || taintCheck.tainted) {
-                    engine.evaluate(ctx, {
-                        attack: 'SSRF',
-                        payload: `Attempted access to host: ${urlStr}`,
-                        sink: `${name}.request`,
-                        baseScore: isInternal ? 50 : 20,
-                        tainted: taintCheck.tainted
-                    });
-                }
+            // 🔴 BLOCK FILE:// PROTOCOL EXPLICITLY 
+            if (urlStr.startsWith('file:') || urlStr.startsWith('ftp:')) {
+                engine.evaluate(ctx, { attack: 'SSRF (Protocol)', payload: `Attempted non-HTTP fetch: ${urlStr}`, sink: `${name}.${methodType}`, baseScore: 99, tainted: true });
             }
-            return originalRequest.apply(this, args);
-        };
-        exports.request.__shield_rasp_hooked = true;
 
-        if (exports.get) {
-            const originalGet = exports.get;
+            // 🔴 BLOCK METADATA IP HARD
+            if (urlStr.includes('169.254.')) {
+                engine.evaluate(ctx, { attack: 'SSRF (Cloud Metadata)', payload: `Attempted AWS/GCP Metadata fetch: ${urlStr}`, sink: `${name}.${methodType}`, baseScore: 99, tainted: true });
+            }
+
+            // 🔴 BLOCK INTERNAL IPs (Pre-DNS Static Match)
+            const isInternal = /^(https?:\/\/)?(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1]))/.test(urlStr) ||
+                /localhost|instance-data|0x7f/.test(urlStr);
+
+            if (isInternal) {
+                engine.evaluate(ctx, { attack: 'SSRF (Internal Network)', payload: `Attempted traversal to private network interface: ${urlStr}`, sink: `${name}.${methodType}`, baseScore: 99, tainted: true });
+            } 
+            
+            // Standard Taint Verification for External Destinations
+            const taintCheck = ctx.isTainted(urlStr);
+            if (taintCheck.tainted) {
+                engine.evaluate(ctx, { attack: 'SSRF', payload: `Outbound connection to tainted host: ${urlStr}`, sink: `${name}.${methodType}`, baseScore: 40, tainted: true });
+            }
+        }
+
+        if (originalRequest) {
+            exports.request = function (this: any, ...args: any[]) {
+                const ctx = getTaintContext();
+                validateURL(args, "request", engine, ctx);
+                return originalRequest.apply(this, args);
+            };
+            exports.request.__shield_rasp_hooked = true;
+        }
+
+        if (originalGet) {
             exports.get = function (this: any, ...args: any[]) {
+                const ctx = getTaintContext();
+                validateURL(args, "get", engine, ctx);
                 return originalGet.apply(this, args);
             };
+            exports.get.__shield_rasp_hooked = true;
         }
+
         return exports;
     });
 }

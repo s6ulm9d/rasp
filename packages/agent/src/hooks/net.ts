@@ -24,6 +24,7 @@ export function setupNetHooks(engine: DetectionEngine) {
                 }
 
                 if (targetHost && ctx) {
+                    console.log(`[HOOK] net.${method} triggered against: ${targetHost}`);
                     ctx.requestMeta.flow.push(`tcp_connect:${targetHost}`);
                     
                     // DNS Rebinding / Enforcement Check

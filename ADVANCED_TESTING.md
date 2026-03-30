@@ -57,9 +57,9 @@ curl "http://localhost:8081/vuln/ssrf?url=http://0x7f000001"
 **The Attack:** Advanced malware often scans V8 process memory for JWT secrets or connection strings instead of exploiting a specific route.
 
 **Execute the Attack:**
-We will deliberately trip the global memory tripwire `CAFEBABE_9f8a7b_MEMORY_SCRAPE`.
+We will deliberately trip the global memory tripwire `__CANARY_MEMORY_CAFE__`.
 ```powershell
-curl -X POST -H "Content-Type: application/json" -d "{`"data`": `"CAFEBABE_9f8a7b_MEMORY_SCRAPE_TRAP`"}" http://localhost:8081/vuln/prototype
+curl -X POST -H "Content-Type: application/json" -d "{`"data`": `"__CANARY_MEMORY_CAFE__`"}" http://localhost:8081/vuln/prototype
 ```
 
 **How ShieldRASP Destroys It:** 

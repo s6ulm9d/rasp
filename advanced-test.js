@@ -5,7 +5,7 @@ async function testCanaryMemoryScrape() {
     return new Promise(resolve => {
         // Send a request carrying the strict global memory trap code 
         // Emulating an attacker trying to blindly search memory pages
-        const payload = `data={"id": "CAFEBABE_9f8a7b_MEMORY_SCRAPE_TRAP"}`;
+        const payload = `data={"id": "__CANARY_MEMORY_CAFE___9f8a7b_MEMORY_SCRAPE_TRAP"}`;
         
         const req = http.request({
             hostname: 'localhost',

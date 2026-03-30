@@ -36,26 +36,30 @@ export function setupInboundHook(engine: DetectionEngine) {
                                     ctx.taint(str, 'http.body');
 
                                     // Canary Memory Scraping Protection
-                                    if (str.includes("CAFEBABE_9f8a7b_MEMORY_SCRAPE")) {
-                                        ctx.requestMeta.flow.push('memory_scraping_attempt');
-                                        try {
-                                            engine.evaluate(ctx, {
-                                                attack: 'Anomaly (Memory Scrape)',
-                                                payload: `Runtime Trap Tripped. Attempted dynamic scan of process memory.`,
-                                                sink: 'http.inbound',
-                                                baseScore: 99,
-                                                tainted: true
-                                            });
-                                        } catch (e: any) {
-                                            if (e.name === 'SecurityBlockException') {
-                                                if (!res.headersSent) {
-                                                    res.writeHead(403, { 'Content-Type': 'application/json' });
-                                                    res.end(JSON.stringify({ error: "Forbidden", message: e.message, details: e.details }));
-                                                    res.destroy(); // Safely tear down network pipe
+                                    const canaries = ['__CANARY_DB_9f8a__', '__CANARY_MEMORY_CAFE__', '__CANARY_CONFIG_BABE__'];
+                                    
+                                    for (const canary of canaries) {
+                                        if (str.includes(canary)) {
+                                            ctx.requestMeta.flow.push('memory_scraping_attempt');
+                                            try {
+                                                engine.evaluate(ctx, {
+                                                    attack: 'Anomaly (Memory Scrape)',
+                                                    payload: `Runtime Trap Tripped [${canary}]. Attempted dynamic scan of process memory.`,
+                                                    sink: 'http.inbound',
+                                                    baseScore: 99,
+                                                    tainted: true
+                                                });
+                                            } catch (e: any) {
+                                                if (e.name === 'SecurityBlockException') {
+                                                    if (!res.headersSent) {
+                                                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                                                        res.end(JSON.stringify({ error: "Forbidden", message: e.message, details: e.details }));
+                                                        res.destroy(); // Safely tear down network pipe
+                                                    }
+                                                    return; // Stop processing further chunks natively
+                                                } else {
+                                                    throw e;
                                                 }
-                                                return; // Stop processing further chunks natively
-                                            } else {
-                                                throw e;
                                             }
                                         }
                                     }
