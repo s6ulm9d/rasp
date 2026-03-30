@@ -67,8 +67,25 @@ export class DetectionEngine {
         });
 
         ctx.totalScore += score;
+        
+        ctx.requestMeta.flow.push(threat.sink);
+        
+        // 5. Context Correlation Engine: Detecting Multi-Phase RCE Chains
+        const flw = ctx.requestMeta.flow;
+        const hasInput = flw.includes('http_input');
+        const hasExec = flw.some(f => f.startsWith('child_process.'));
+        const hasFsWrite = flw.some(f => f.startsWith('fs.write'));
+        const hasUDP = flw.includes('udp_outbound');
+        
+        if (hasInput && hasExec && hasFsWrite && ctx.totalScore < this.config.thresholds.block) {
+            ctx.totalScore += 50; // Contextual anomaly aggregation!
+        }
+        
+        if (hasExec && hasUDP && ctx.totalScore < this.config.thresholds.block) {
+            ctx.totalScore += 80; // Classic reverse shell exfiltration pattern!
+        }
 
-        // 4. Decision Making based on total aggregated score AND explicitly defined policy
+        // 6. Decision Making based on total aggregated score AND explicitly defined policy
         if (ctx.totalScore >= this.config.thresholds.block && policy === 'block') {
             this.triggerAction('blocked', ctx);
         } else if (ctx.totalScore >= this.config.thresholds.log || policy === 'alert') {

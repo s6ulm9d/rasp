@@ -1,9 +1,8 @@
 const { Hook } = require('require-in-the-middle');
 import { taintStorage, TaintContext } from '../taint/context';
-import { AgentConfig } from '../config';
-import { TelemetryClient } from '../telemetry';
+import { DetectionEngine } from '../engine';
 
-export function setupInboundHook(config: AgentConfig, telemetry: TelemetryClient) {
+export function setupInboundHook(engine: DetectionEngine) {
     Hook(['http'], (exports: any) => {
         const originalCreateServer = exports.createServer;
 
@@ -27,14 +26,39 @@ export function setupInboundHook(config: AgentConfig, telemetry: TelemetryClient
                     } catch (e) { }
 
                     // 3. Hook Body (Data Events)
-                    // We taint every chunk that enters the application via the request stream
                     const originalOn = req.on;
                     req.on = function (event: string, listener: any) {
                         if (event === 'data' && typeof listener === 'function') {
                             const wrappedListener = (chunk: any) => {
                                 const str = Buffer.isBuffer(chunk) ? chunk.toString() : chunk;
                                 if (typeof str === 'string') {
+                                    ctx.requestMeta.flow.push('http_input');
                                     ctx.taint(str, 'http.body');
+
+                                    // Canary Memory Scraping Protection
+                                    if (str.includes("CAFEBABE_9f8a7b_MEMORY_SCRAPE")) {
+                                        ctx.requestMeta.flow.push('memory_scraping_attempt');
+                                        try {
+                                            engine.evaluate(ctx, {
+                                                attack: 'Anomaly (Memory Scrape)',
+                                                payload: `Runtime Trap Tripped. Attempted dynamic scan of process memory.`,
+                                                sink: 'http.inbound',
+                                                baseScore: 99,
+                                                tainted: true
+                                            });
+                                        } catch (e: any) {
+                                            if (e.name === 'SecurityBlockException') {
+                                                if (!res.headersSent) {
+                                                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                                                    res.end(JSON.stringify({ error: "Forbidden", message: e.message, details: e.details }));
+                                                    res.destroy(); // Safely tear down network pipe
+                                                }
+                                                return; // Stop processing further chunks natively
+                                            } else {
+                                                throw e;
+                                            }
+                                        }
+                                    }
                                 }
                                 return listener(chunk);
                             };

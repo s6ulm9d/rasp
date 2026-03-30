@@ -2,6 +2,8 @@ const { Hook } = require('require-in-the-middle');
 import { getTaintContext } from '../taint/context';
 import { DetectionEngine } from '../engine';
 
+import { dnsGuard } from '../dnsGuard';
+
 export function setupSsrfHooks(engine: DetectionEngine) {
     // 1. DNS Resolution Hooking
     // Catches SSRF evasion techniques that rely on routing domains to internal IPs
@@ -21,6 +23,7 @@ export function setupSsrfHooks(engine: DetectionEngine) {
                     // Wrap the callback to inspect the resolved IP address dynamically
                     args[args.length - 1] = function (err: any, address: string, family: number) {
                         if (!err && address) {
+                            dnsGuard.trackCallbackResolution(hostname, address);
                             const isInternal = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)/.test(address);
                             if (isInternal) {
                                 engine.evaluate(ctx, {

@@ -11,6 +11,7 @@ import { setupRceHooks } from './hooks/rce';
 import { setupPrototypeHooks } from './hooks/prototype';
 import { setupSsrfHooks } from './hooks/ssrf';
 import { setupNetHooks } from './hooks/net';
+import { setupBehavioralHooks } from './hooks/behavioral';
 
 export class ShieldRASPAgent {
     private static instance: ShieldRASPAgent;
@@ -36,7 +37,7 @@ export class ShieldRASPAgent {
         console.log(`[ShieldRASP] Current Mode: ${config.mode.toUpperCase()}`);
 
         // Initialize all security hooks with the Deterministic Decision Engine
-        setupInboundHook(config, telemetry); // Inbound doesn't trigger alerts, just sets taint context
+        setupInboundHook(engine); 
         setupSqlHooks(engine);
         setupNoSqlHooks(engine);
         setupCmdHooks(engine);
@@ -45,6 +46,7 @@ export class ShieldRASPAgent {
         setupPrototypeHooks(engine);
         setupSsrfHooks(engine);
         setupNetHooks(engine);
+        setupBehavioralHooks(engine);
 
         this.isStarted = true;
     }

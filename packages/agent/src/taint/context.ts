@@ -34,11 +34,23 @@ export function canonicalize(input: string): string {
     .toLowerCase();
 }
 
-export class TaintContext {
-  // We use a Map to track canonicalized tainted strings. 
-  private taintedValues = new Map<string, TaintLabel>();
+export class TaintNode {
+  value: string;
+  source: string;
+  weight: number;
+  children: TaintNode[] = [];
 
-  // Guardrails: Limit map size to prevent OOM
+  constructor(value: string, source: string) {
+    this.value = value;
+    this.source = source;
+    this.weight = 1.0;
+  }
+}
+
+export class TaintContext {
+  // Replace simple string map with a Weighted Context Graph representing propagation
+  private taintRoots = new Map<string, TaintNode>();
+
   private readonly MAX_TAINT_ITEMS = 100;
   private readonly MAX_STRING_LENGTH = 10000;
 
@@ -49,40 +61,62 @@ export class TaintContext {
     method: '',
     path: '',
     ip: '',
-    requestId: uuid()
+    requestId: uuid(),
+    flow: [] as string[]
   };
 
-  public taint(val: string, source: string) {
-    if (!val || typeof val !== 'string') return;
-    if (this.taintedValues.size >= this.MAX_TAINT_ITEMS) return; // Cap memory usage
+  public metrics = {
+    outboundUDP: 0,
+    outboundConnections: 0,
+    uniqueDomains: new Set<string>(),
+    errors: 0
+  };
 
+  public taint(val: string, source: string, parentNode?: TaintNode): TaintNode | undefined {
+    if (!val || typeof val !== 'string') return;
+    if (this.taintRoots.size >= this.MAX_TAINT_ITEMS) return; // Cap memory usage
+    
     // Truncate massively long strings before canonicalization to cap CPU burn
     const safeVal = val.length > this.MAX_STRING_LENGTH ? val.substring(0, this.MAX_STRING_LENGTH) : val;
-
     const clean = canonicalize(safeVal);
     if (!clean) return;
 
-    this.taintedValues.set(clean, {
-      sources: [source],
-      timestamp: Date.now()
-    });
+    if (parentNode) {
+        // Taint Propagation Edge
+        const child = new TaintNode(clean, source);
+        child.weight = parentNode.weight * 0.9; // Diminishing returns on deep propagation obfuscations
+        parentNode.children.push(child);
+        return child;
+    } else {
+        // Root payload node from direct input layer boundaries
+        const root = new TaintNode(clean, source);
+        this.taintRoots.set(clean, root);
+        return root;
+    }
   }
 
-  public isTainted(query: string): { tainted: boolean; source?: string } {
+  public isTainted(query: string): { tainted: boolean; source?: string; weight?: number; graphNode?: TaintNode } {
     if (!query || typeof query !== 'string') return { tainted: false };
 
     const cleanQuery = canonicalize(query);
 
-    // Exact match check
-    if (this.taintedValues.has(cleanQuery)) {
-      return { tainted: true, source: 'direct' };
+    // Exact root hash match check (O(1))
+    if (this.taintRoots.has(cleanQuery)) {
+      const node = this.taintRoots.get(cleanQuery)!;
+      return { tainted: true, source: 'direct', weight: node.weight, graphNode: node };
     }
 
-    // Substring-aware check against canonicalized inputs
-    for (const [taintedVal] of this.taintedValues) {
-      if (cleanQuery.includes(taintedVal)) {
-        return { tainted: true, source: taintedVal };
-      }
+    // Graph sub-hash aware check (Crucial for injection / path traversal)
+    // BFS traversal of taint nodes for dynamic sub-matches
+    const queue: TaintNode[] = Array.from(this.taintRoots.values());
+    while (queue.length > 0) {
+        const current = queue.shift()!;
+        if (cleanQuery.includes(current.value)) {
+            return { tainted: true, source: current.value, weight: current.weight, graphNode: current };
+        }
+        for (const child of current.children) {
+            queue.push(child);
+        }
     }
 
     return { tainted: false };
