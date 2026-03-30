@@ -2,68 +2,90 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface AgentConfig {
-  apiKey: string;
-  mode: 'monitor' | 'alert' | 'block';
+  mode: 'block' | 'alert';
   endpoint: string;
-  timeout: number;
+  logDir: string;
   protections: {
     sqli: boolean;
-    cmd_injection: boolean;
-    xss: boolean;
-    ssrf: boolean;
-    path_traversal: boolean;
-    prototype_pollution: boolean;
-    file_inclusion: boolean;
+    nosql: boolean;
+    cmd: boolean;
     rce: boolean;
-    deserialization: boolean;
+    path: boolean;
+    prototype: boolean;
+    ssrf: boolean;
   };
+  thresholds: {
+    block: number;
+    log: number;
+  };
+  policies?: Record<string, 'block' | 'alert' | 'off'>;
+  sensitivity: 'high' | 'medium' | 'low';
+  allowlist: string[];
 }
 
-const DEFAULT_PROTECTIONS = {
-  sqli: true,
-  cmd_injection: true,
-  xss: true,
-  ssrf: true,
-  path_traversal: true,
-  prototype_pollution: true,
-  file_inclusion: true,
-  rce: true,
-  deserialization: true
+const DEFAULT_CONFIG: AgentConfig = {
+  mode: 'block',
+  endpoint: 'http://localhost:50052',
+  logDir: path.join(process.env.HOME || process.env.USERPROFILE || '.', '.shieldrasp', 'logs'),
+  protections: {
+    sqli: true,
+    nosql: true,
+    cmd: true,
+    rce: true,
+    path: true,
+    prototype: true,
+    ssrf: true
+  },
+  thresholds: {
+    block: 80,
+    log: 50
+  },
+  sensitivity: 'high',
+  allowlist: []
 };
 
-export function validateConfig(config: AgentConfig) {
-  if (!config.apiKey && config.mode !== 'monitor') {
-    console.warn('[ShieldRASP] Warning: apiKey not set. Running with default demo key.');
-    config.apiKey = 'demo_agent_key_12345';
-  }
-}
+export function loadConfig(): AgentConfig {
+  const configPath = path.join(process.cwd(), 'shieldrasp.json');
+  let config = { ...DEFAULT_CONFIG };
 
-export function loadConfig(partial: Partial<AgentConfig> = {}): AgentConfig {
-  const rootDir = process.cwd();
-  const configFilePath = path.join(rootDir, 'shieldrasp.json');
-  let fileConfig: any = {};
-
-  if (fs.existsSync(configFilePath)) {
+  if (fs.existsSync(configPath)) {
     try {
-      fileConfig = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
-      console.log(`[ShieldRASP] Loaded configuration from ${configFilePath}`);
+      const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config = { ...config, ...fileConfig };
+      config.protections = { ...DEFAULT_CONFIG.protections, ...fileConfig.protections };
+      config.thresholds = { ...DEFAULT_CONFIG.thresholds, ...fileConfig.thresholds };
+
+      // Migrate boolean protections to modern Policy configurations
+      config.policies = {};
+      for (const [key, val] of Object.entries(config.protections)) {
+        if (typeof val === 'boolean') {
+          config.policies[key] = val ? config.mode : 'off';
+        } else if (typeof val === 'string' && ['block', 'alert', 'off'].includes(val)) {
+          config.policies[key] = val as any;
+        }
+      }
+
+      if (fileConfig.policies) {
+        config.policies = { ...config.policies, ...fileConfig.policies };
+      }
+
     } catch (e) {
-      console.error(`[ShieldRASP] Error reading config file: ${e}`);
+      console.error(`[ShieldRASP] Failed to parse shieldrasp.json, using defaults.`);
     }
   }
 
-  const config: AgentConfig = {
-    apiKey: partial.apiKey || fileConfig.apiKey || process.env.RASP_KEY || 'demo_agent_key_12345',
-    mode: partial.mode || fileConfig.mode || (process.env.RASP_MODE as any) || 'block',
-    endpoint: partial.endpoint || fileConfig.endpoint || process.env.RASP_URL || 'localhost:50052',
-    timeout: partial.timeout || fileConfig.timeout || 5000,
-    protections: {
-      ...DEFAULT_PROTECTIONS,
-      ...fileConfig.protections,
-      ...partial.protections
+  // Initialize defaults if not overridden
+  if (!config.policies) {
+    config.policies = {};
+    for (const [key, val] of Object.entries(config.protections)) {
+      config.policies[key] = val ? config.mode : 'off';
     }
-  };
+  }
 
-  validateConfig(config);
+  // Ensure log directory exists
+  if (!fs.existsSync(config.logDir)) {
+    fs.mkdirSync(config.logDir, { recursive: true });
+  }
+
   return config;
 }

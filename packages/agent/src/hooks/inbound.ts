@@ -1,9 +1,9 @@
 const { Hook } = require('require-in-the-middle');
 import { taintStorage, TaintContext } from '../taint/context';
 import { AgentConfig } from '../config';
-import { TelemetryClient } from '../telemetry/client';
+import { TelemetryClient } from '../telemetry';
 
-export function hookInbound(config: AgentConfig, telemetry: TelemetryClient) {
+export function setupInboundHook(config: AgentConfig, telemetry: TelemetryClient) {
     Hook(['http'], (exports: any) => {
         const originalCreateServer = exports.createServer;
 
@@ -13,49 +13,37 @@ export function hookInbound(config: AgentConfig, telemetry: TelemetryClient) {
                 args[0] = function (req: any, res: any) {
                     const ctx = new TaintContext();
 
-                    // Basic taint for query params and path
+                    // 1. Setup Request Metadata
+                    ctx.requestMeta.method = req.method || 'GET';
+                    ctx.requestMeta.path = req.url || '/';
+                    ctx.requestMeta.ip = req.socket.remoteAddress || '127.0.0.1';
+
+                    // 2. Taint Query Params
                     try {
                         const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
                         url.searchParams.forEach((val, key) => {
-                            // Taint the value string
-                            ctx.taintedObjects.set(val, {
-                                sources: ['http.query'],
-                                path: [key],
-                                timestamp: Date.now()
-                            });
+                            ctx.taint(val, `http.query.${key}`);
                         });
+                    } catch (e) { }
 
-                        // Metadata for the request
-                        ctx.requestMeta = {
-                            userId: '',
-                            sessionId: '',
-                            sourceIp: req.socket.remoteAddress || '',
-                            requestId: Math.random().toString(36).substring(7),
-                            httpMethod: req.method || '',
-                            httpPath: url.pathname
-                        };
-
-                        // Early Ingress WAF detection
-                        const { detectIngress } = require('../detection/ingress');
-                        const ingressResult = detectIngress(decodeURIComponent(url.pathname), url.searchParams);
-
-                        if (ingressResult.matched) {
-                            telemetry.sendEvent(ingressResult);
-
-                            if (ingressResult.blocked && config.mode === 'block') {
-                                res.writeHead(403, { 'Content-Type': 'application/json' });
-                                res.end(JSON.stringify({
-                                    error: 'Blocked by ShieldRASP',
-                                    details: `ShieldRASP Blocked: ${ingressResult.attack_type || 'Malicious Payload'}`
-                                }));
-                                return;
-                            }
+                    // 3. Hook Body (Data Events)
+                    // We taint every chunk that enters the application via the request stream
+                    const originalOn = req.on;
+                    req.on = function (event: string, listener: any) {
+                        if (event === 'data' && typeof listener === 'function') {
+                            const wrappedListener = (chunk: any) => {
+                                const str = Buffer.isBuffer(chunk) ? chunk.toString() : chunk;
+                                if (typeof str === 'string') {
+                                    ctx.taint(str, 'http.body');
+                                }
+                                return listener(chunk);
+                            };
+                            return originalOn.call(this, event, wrappedListener);
                         }
+                        return originalOn.call(this, event, listener);
+                    };
 
-                    } catch (e) {
-                        // ignore malformed URLs
-                    }
-
+                    // Execute request inside the Taint Storage context
                     return taintStorage.run(ctx, () => {
                         return originalHandler.apply(this, [req, res]);
                     });

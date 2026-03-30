@@ -1,11 +1,14 @@
 {
     "name": "@shieldrasp/cli",
     "version": "1.0.0",
-    "description": "ShieldRASP Command Line Interface Tool",
+    "description": "ShieldRASP Management CLI",
     "main": "dist/index.js",
     "bin": {
         "shieldrasp": "dist/index.js"
     },
+    "files": [
+        "dist"
+    ],
     "scripts": {
         "build": "tsc",
         "dev": "ts-node src/index.ts"
@@ -18,8 +21,7 @@
         "clui": "^0.3.6"
     },
     "devDependencies": {
-        "typescript": "^5.3.3",
         "@types/node": "^20.0.0",
-        "ts-node": "^10.9.2"
+        "typescript": "^5.3.3"
     }
 }

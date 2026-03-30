@@ -1,20 +1,28 @@
 {
   "name": "shieldrasp-monorepo",
-  "version": "1.0.0",
   "private": true,
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev --parallel",
-    "cli": "node packages/cli/dist/index.js",
-    "lint": "turbo run lint",
-    "test": "turbo run test"
+    "build": "npm run build -w packages/agent && npm run build -w packages/cli",
+    "test": "npm test --workspaces",
+    "demo": "cd apps/demo-app && node index.js",
+    "monitor": "cd packages/cli && npm run dev -- monitor",
+    "clean": "rm -rf packages/*/dist apps/*/dist node_modules"
   },
   "devDependencies": {
-    "turbo": "^1.11.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "function-bind": "^1.1.2",
+    "call-bind-apply-helpers": "^1.0.2",
+    "dunder-proto": "^1.0.1",
+    "call-bind": "^1.0.8",
+    "get-intrinsic": "^1.2.7",
+    "side-channel": "^1.1.0",
+    "require-in-the-middle": "^7.4.0"
   }
 }

@@ -1,18 +1,19 @@
-import { AgentConfig, loadConfig } from './config';
-import { TelemetryClient } from './telemetry/client';
-import { hookFs } from './hooks/fs';
-import { hookHttp } from './hooks/http';
-import { hookChildProcess } from './hooks/cp';
-import { hookPg } from './hooks/pg';
-import { hookInbound } from './hooks/inbound';
-import { hookDynamicExc } from './hooks/dynamic';
-import { hookMysql } from './hooks/mysql';
-import { hookMongo } from './hooks/mongodb';
+import { loadConfig } from './config';
+import { TelemetryClient } from './telemetry';
+import { StructuredLogger } from './logger';
+import { DetectionEngine } from './engine';
+import { setupInboundHook } from './hooks/inbound';
+import { setupSqlHooks } from './hooks/sql';
+import { setupNoSqlHooks } from './hooks/nosql';
+import { setupCmdHooks } from './hooks/cmd';
+import { setupPathHooks } from './hooks/path';
+import { setupRceHooks } from './hooks/rce';
+import { setupPrototypeHooks } from './hooks/prototype';
+import { setupSsrfHooks } from './hooks/ssrf';
+import { setupNetHooks } from './hooks/net';
 
 export class ShieldRASPAgent {
     private static instance: ShieldRASPAgent;
-    private config!: AgentConfig;
-    private telemetry!: TelemetryClient;
     private isStarted: boolean = false;
 
     private constructor() { }
@@ -24,51 +25,35 @@ export class ShieldRASPAgent {
         return ShieldRASPAgent.instance;
     }
 
-    /**
-     * Start the RASP protection agent.
-     */
-    public start(partialConfig: Partial<AgentConfig> = {}) {
-        if (this.isStarted) return this;
+    public start() {
+        if (this.isStarted) return;
 
-        this.config = loadConfig(partialConfig);
-        this.telemetry = new TelemetryClient(this.config);
+        const config = loadConfig();
+        const telemetry = new TelemetryClient(config);
+        const logger = new StructuredLogger(config);
+        const engine = new DetectionEngine(config, telemetry, logger);
 
-        console.log(`[ShieldRASP] Current Mode: ${this.config.mode.toUpperCase()}`);
+        console.log(`[ShieldRASP] Current Mode: ${config.mode.toUpperCase()}`);
 
-        // Register core instrumentation hooks
-        hookInbound(this.config, this.telemetry); // Ingress & Taint Propagation
-        hookFs(this.config, this.telemetry);      // Filesystem Security (Traversal)
-        hookHttp(this.config, this.telemetry);    // Network requests (SSRF)
-        hookChildProcess(this.config, this.telemetry); // Command injection
-        hookPg(this.config, this.telemetry);      // PostgreSQL queries
-        hookMysql(this.config, this.telemetry);   // MySQL queries
-        hookMongo(this.config, this.telemetry);   // MongoDB queries
-        hookDynamicExc(this.config, this.telemetry); // eval / vm / Function (RCE)
+        // Initialize all security hooks with the Deterministic Decision Engine
+        setupInboundHook(config, telemetry); // Inbound doesn't trigger alerts, just sets taint context
+        setupSqlHooks(engine);
+        setupNoSqlHooks(engine);
+        setupCmdHooks(engine);
+        setupPathHooks(engine);
+        setupRceHooks(engine);
+        setupPrototypeHooks(engine);
+        setupSsrfHooks(engine);
+        setupNetHooks(engine);
 
         this.isStarted = true;
-        return this;
-    }
-
-    /** @deprecated Use start() instead */
-    public init(config: Partial<AgentConfig> = {}) {
-        return this.start(config);
     }
 }
 
-// Singleton export functions
-export const start = (config: Partial<AgentConfig> = {}) => {
-    return ShieldRASPAgent.getInstance().start(config);
-};
-
-export const init = (config: Partial<AgentConfig> = {}) => {
-    return ShieldRASPAgent.getInstance().init(config);
-};
 
 // Automatic initialization for NODE_OPTIONS="--require @shieldrasp/agent"
-// We check if this is being required and not just imported as part of a bundle.
-if (process.env.RASP_AUTO_LOAD !== 'false' && (process.env.NODE_OPTIONS?.includes('--require @shieldrasp/agent') || process.env.NODE_OPTIONS?.includes('--require ./packages/agent'))) {
-    start();
-}
+const agent = ShieldRASPAgent.getInstance();
+agent.start();
 
-export { RASPBlockError } from './errors';
-
+export const start = () => agent.start();
+export default agent;

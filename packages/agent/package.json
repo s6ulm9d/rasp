@@ -3,17 +3,18 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "watch": "tsc -w"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.10.1",
-    "@grpc/proto-loader": "^0.7.10",
-    "node-sql-parser": "^5.0.0",
-    "require-in-the-middle": "^7.3.0",
+    "chalk": "^4.1.2",
+    "require-in-the-middle": "^7.4.0",
     "shimmer": "^1.2.1",
-    "socket.io-client": "^4.8.3",
-    "zstd-codec": "^0.1.2"
+    "socket.io-client": "^4.7.4"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

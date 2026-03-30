@@ -1,0 +1,61 @@
+﻿[ShieldRASP] Current Mode: BLOCK
+node : C:\Users\soulmad\proje
+cts\rasp\shieldrasp\node_modu
+les\shimmer\index.js:14
+At line:1 char:1
++ node index.js 2>&1 | 
+Out-File -FilePath stack.txt 
+-Encoding utf8; Get ...
++ ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (C:\User  
+  s\soulma...mer\index.js:   
+ 14:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+  Object.defineProperty(obj, 
+name, {
+         ^
+
+TypeError: Cannot redefine 
+property: runInContext
+    at 
+Function.defineProperty 
+(<anonymous>)
+    at defineProperty (C:\Use
+rs\soulmad\projects\rasp\shie
+ldrasp\node_modules\shimmer\i
+ndex.js:14:10)
+    at Object.wrap (C:\Users\
+soulmad\projects\rasp\shieldr
+asp\node_modules\shimmer\inde
+x.js:56:3)
+    at hookDynamicExc (C:\Use
+rs\soulmad\projects\rasp\shie
+ldrasp\packages\agent\dist\ho
+oks\dynamic.js:93:13)
+    at ShieldRASPAgent.start 
+(C:\Users\soulmad\projects\ra
+sp\shieldrasp\packages\agent\
+dist\index.js:43:38)
+    at Object.start (C:\Users
+\soulmad\projects\rasp\shield
+rasp\packages\agent\dist\inde
+x.js:55:42)
+    at Object.<anonymous> (C:
+\Users\soulmad\projects\rasp\
+shieldrasp\apps\demo-app\inde
+x.js:2:34)
+    at Module._compile (node:
+internal/modules/cjs/loader:1
+706:14)
+    at Object..js (node:inter
+nal/modules/cjs/loader:1839:1
+0)
+    at Module.load (node:inte
+rnal/modules/cjs/loader:1441:
+32)
+
+Node.js v22.20.0
