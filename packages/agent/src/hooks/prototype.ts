@@ -1,36 +1,27 @@
 import { getTaintContext } from '../taint/context';
 import { DetectionEngine } from '../engine';
 
-export function setupPrototypeHooks(engine: DetectionEngine) {
+export function setupPrototypeHooks(engine: any) {
     const originalParse = JSON.parse;
     JSON.parse = function (text: string, reviver?: (this: any, key: string, value: any) => any) {
         const result = originalParse.call(this, text, reviver);
         const ctx = getTaintContext();
 
-        // If the input text was tainted, we inspect the output object for pollution keys
-        if (text && ctx && ctx.isTainted(text).tainted) {
-            let polluted = false;
-            const detectPollution = (obj: any, depth = 0) => {
-                if (depth > 10 || !obj || typeof obj !== 'object' || polluted) return;
-
-                const keys = Object.keys(obj);
-                for (const key of keys) {
-                    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-                        polluted = true;
-                        engine.evaluate(ctx, {
-                            attack: 'Prototype Pollution',
-                            payload: `Detected malicious key "${key}" in tainted JSON.parse output`,
-                            sink: `JSON.parse`,
-                            baseScore: 50,
-                            tainted: true
-                        });
-                        break;
+        if (text && ctx) {
+            const taintCheck = ctx.isTainted(text);
+            if (taintCheck) {
+                // Taint the result object
+                ctx.taint(result, 'json.parse.output');
+                
+                // Active scan for pollution keys
+                const check = (obj: any) => {
+                    if (!obj || typeof obj !== 'object') return;
+                    if (obj['__proto__'] || obj['prototype'] || obj['constructor']) {
+                        engine.reportThreat(ctx, 'Prototype Pollution', text, 'JSON.parse', 100);
                     }
-                    detectPollution(obj[key], depth + 1);
-                }
-            };
-
-            detectPollution(result);
+                };
+                check(result);
+            }
         }
 
         return result;

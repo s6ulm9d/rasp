@@ -20,7 +20,12 @@ program
     .description('Start real-time attack monitor')
     .option('-p, --port <number>', 'Telemetry port', '50052')
     .action((options) => {
-        const io = new Server(parseInt(options.port));
+        const io = new Server(parseInt(options.port), {
+            cors: {
+                origin: "*",
+                methods: ["GET", "POST"]
+            }
+        });
         console.log(chalk.green(`🚀 ShieldRASP CLI Monitor started on port ${options.port}`));
         console.log(chalk.dim('Awaiting telemetry streams from agents...'));
 
@@ -45,27 +50,14 @@ program
         });
     });
 
+import { runInitCommand } from './commands/init';
+
 // 2. INIT - Project Initialization
 program
     .command('init')
-    .description('Initialize ShieldRASP configuration in the current folder')
+    .description('Initialize ShieldRASP configuration safely into the current codebase')
     .action(() => {
-        const configPath = path.join(process.cwd(), 'shieldrasp.json');
-        const defaultConfig = {
-            mode: 'block',
-            endpoint: 'http://localhost:50052',
-            protections: {
-                sqli: true,
-                nosql: true,
-                cmd: true,
-                rce: true,
-                path: true,
-                prototype: true,
-                ssrf: true
-            }
-        };
-        fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
-        console.log(chalk.green('✅ Initialized shieldrasp.json with default settings.'));
+        runInitCommand();
     });
 
 // 3. STATUS - System Health

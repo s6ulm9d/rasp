@@ -10,6 +10,7 @@
     "test": "npm test --workspaces",
     "demo": "cd apps/demo-app && node index.js",
     "monitor": "cd packages/cli && npm run dev -- monitor",
+    "dashboard": "cd apps/dashboard && npm run dev",
     "clean": "rm -rf packages/*/dist apps/*/dist node_modules"
   },
   "devDependencies": {
@@ -26,6 +27,7 @@
     "require-in-the-middle": "^7.4.0"
   },
   "dependencies": {
-    "cross-env": "^10.1.0"
+    "cross-env": "^10.1.0",
+    "workspaces": "^0.1.0"
   }
 }

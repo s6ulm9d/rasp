@@ -1,0 +1,10 @@
+{
+  "mode": "BLOCK",
+  "rules": {
+    "sql_injection": true,
+    "command_injection": true,
+    "ssrf": true,
+    "xss": true,
+    "max_body_size": "5mb"
+  }
+}

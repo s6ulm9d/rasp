@@ -1,8 +1,8 @@
 const { Hook } = require('require-in-the-middle');
 import { getTaintContext } from '../taint/context';
-import { DetectionEngine } from '../engine';
+import { SinkMonitor } from '../analyzer/SinkMonitor';
 
-export function setupCmdHooks(engine: DetectionEngine) {
+export function setupCmdHooks(engine: any) {
     Hook(['child_process'], (exports: any) => {
         const methods = ['exec', 'execSync', 'spawn', 'spawnSync', 'execFile', 'execFileSync'];
 
@@ -11,26 +11,14 @@ export function setupCmdHooks(engine: DetectionEngine) {
             if (!original || original.__shield_rasp_hooked) return;
 
             exports[method] = function (this: any, ...args: any[]) {
-                const command = typeof args[0] === 'string' ? args[0] : '';
-                const file = args[0]; // for spawn/execFile
-                const ctx = getTaintContext();
-
-                if (ctx) {
-                    const checkVal = command || (typeof file === 'string' ? file : '');
-                    const taintCheck = ctx.isTainted(checkVal);
-
-                    // Detect shell metacharacters in tainted command input
-                    const shellMetachars = /[|&;<>$`\(\)\n\r\\]/;
-                    const hasMetachars = shellMetachars.test(checkVal);
-
-                    if (hasMetachars || taintCheck.tainted) {
-                        engine.evaluate(ctx, {
-                            attack: 'Command Injection',
-                            payload: checkVal,
-                            sink: `child_process.${method}`,
-                            baseScore: hasMetachars ? 60 : 30,
-                            tainted: taintCheck.tainted
-                        });
+                try {
+                    SinkMonitor.validateExecution(`child_process.${method}`, ...args);
+                } catch (e: any) {
+                    if (e.name === 'SecurityBlockException') {
+                        // Report to engine for logging before blocking
+                        const ctx = getTaintContext();
+                        if (ctx) engine.reportThreat(ctx, 'Command Injection', String(args[0]), `child_process.${method}`, 100);
+                        throw e;
                     }
                 }
                 return original.apply(this, args);

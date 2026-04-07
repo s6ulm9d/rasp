@@ -13,6 +13,9 @@ export interface SecurityEvent {
     method?: string;
     path?: string;
     ip?: string;
+    requestId?: string;
+    score?: number;
+    chain?: any[];
 }
 
 export class TelemetryClient {
@@ -38,7 +41,10 @@ export class TelemetryClient {
             timestamp: new Date().toISOString(),
             method: event.method,
             path: event.path,
-            ip: event.ip
+            ip: event.ip,
+            requestId: event.requestId,
+            score: event.score,
+            chain: event.chain
         };
 
         // 1. Log to console

@@ -25,23 +25,16 @@ app.get('/vuln/sqli', (req, res, next) => {
 });
 
 // 2. Command Injection
-app.get('/vuln/cmd', (req, res) => {
-    const host = req.query.host;
+app.post('/vuln/cmd', (req, res, next) => {
+    const cmd = req.body && req.body.injected ? req.body.injected : '';
     // VULNERABLE: Direct string concatenation into a shell command
-    exec(`ping -c 1 ${host}`, (err, stdout, stderr) => {
-        res.json({ stdout, stderr });
-    });
-});
-
-// 3. Remote Code Execution
-app.get('/vuln/rce', (req, res, next) => {
-    const code = req.query.code;
-    // VULNERABLE: Executing arbitrary code from user input
     try {
-        const result = eval(code);
-        res.json({ result });
+       exec(`ping -c 1 ${cmd}`, (err, stdout, stderr) => {
+           res.json({ stdout, stderr });
+       });
     } catch (e) {
-        next(e);
+       if (e.name === 'SecurityBlockException') return next(e);
+       next(e);
     }
 });
 
@@ -101,6 +94,19 @@ app.get('/vuln/nosql', (req, res, next) => {
     }
 
     res.json({ message: "NoSQL Query executed", filter });
+});
+
+// 8. Remote Code Execution (EVAL)
+app.get('/vuln/rce', (req, res, next) => {
+    const code = req.query.code;
+    // VULNERABLE: Direct eval of user input
+    try {
+        const result = eval(code);
+        res.json({ status: "executed", result: String(result) });
+    } catch (e) {
+        if (e.name === 'SecurityBlockException') return next(e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.get('/health', (req, res) => res.json({ status: "ok" }));

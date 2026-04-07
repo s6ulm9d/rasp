@@ -1,0 +1,13 @@
+{
+  "name": "@shieldrasp/core-engine",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "lru-cache": "^10.2.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.3.0",
+    "chai": "^4.4.1"
+  }
+}

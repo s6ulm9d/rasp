@@ -41,7 +41,7 @@ const DEFAULT_CONFIG: AgentConfig = {
     log: 50
   },
   sensitivity: 'high',
-  allowlist: []
+  allowlist: ['/health', '/favicon.ico']
 };
 
 export function loadConfig(): AgentConfig {

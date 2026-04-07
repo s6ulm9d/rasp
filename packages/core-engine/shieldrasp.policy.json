@@ -1,0 +1,6 @@
+{
+  "max_body_size": 10485760,
+  "block_threshold": 0.5,
+  "allow_userinfo": false,
+  "mode": "block"
+}

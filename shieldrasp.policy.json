@@ -1,0 +1,14 @@
+{
+    "version": "1.0",
+    "mode": "block",
+    "thresholds": {
+        "block": 70,
+        "log": 30
+    },
+    "rules": {
+        "sqli": { "action": "block", "threshold": 70 },
+        "cmd": { "action": "block", "threshold": 80 },
+        "path": { "action": "block", "threshold": 60 }
+    },
+    "globalAllowlist": ["/favicon.ico", "/health"]
+}
